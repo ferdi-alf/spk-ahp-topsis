@@ -23,6 +23,11 @@
         "vite": "^7.0.4"
     },
     "dependencies": {
+        "@emotion/react": "^11.14.0",
+        "@emotion/styled": "^11.14.1",
+        "@mui/icons-material": "^7.3.2",
+        "@mui/material": "^7.3.2",
+        "react-fox-toast": "^1.10.20",
         "swr": "^2.3.6"
     }
 }

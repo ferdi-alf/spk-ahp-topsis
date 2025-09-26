@@ -11,10 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('alternative_values', function (Blueprint $table) {
+       Schema::create('alternative_values', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('alternative_id')->constrained('alternatives')->cascadeOnDelete();
+            $table->foreignId('criteria_id')->constrained('criteria')->cascadeOnDelete();
+            $table->decimal('value', 8, 4); 
             $table->timestamps();
         });
+
     }
 
     /**

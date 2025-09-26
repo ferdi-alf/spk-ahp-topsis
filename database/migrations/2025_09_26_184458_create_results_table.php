@@ -13,8 +13,16 @@ return new class extends Migration
     {
         Schema::create('results', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('alternative_id')->constrained('alternatives')->cascadeOnDelete();
+            $table->decimal('ahp_score', 8, 4)->nullable();
+            $table->integer('ahp_rank')->nullable();
+            $table->decimal('topsis_score', 8, 4)->nullable();
+            $table->integer('topsis_rank')->nullable();
+            $table->decimal('combined_score', 8, 4)->nullable(); // jika AHP+TOPSIS digabung
+            $table->integer('combined_rank')->nullable();
             $table->timestamps();
         });
+
     }
 
     /**

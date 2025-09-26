@@ -11,10 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('alternatives', function (Blueprint $table) {
+       Schema::create('alternatives', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('upload_id')->constrained('uploads')->cascadeOnDelete();
+            $table->string('name'); // nama karyawan
             $table->timestamps();
         });
+
     }
 
     /**

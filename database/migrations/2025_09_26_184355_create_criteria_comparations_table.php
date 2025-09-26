@@ -11,10 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('criteria_comparations', function (Blueprint $table) {
+       Schema::create('criteria_comparisons', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('criteria_id_1')->constrained('criteria')->cascadeOnDelete();
+            $table->foreignId('criteria_id_2')->constrained('criteria')->cascadeOnDelete();
+            $table->decimal('value', 8, 4);
             $table->timestamps();
         });
+
     }
 
     /**
