@@ -9,7 +9,9 @@ class Criteria extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'weight'];
+    protected $table = 'criteria';
+
+    protected $fillable = ['name', 'code', 'weight'];
 
     public function comparisonsAsFirst()
     {

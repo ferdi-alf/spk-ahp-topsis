@@ -28,6 +28,8 @@
         "@mui/icons-material": "^7.3.2",
         "@mui/material": "^7.3.2",
         "react-fox-toast": "^1.10.20",
+        "react-hook-form": "^7.63.0",
+        "sweetalert2": "^11.23.0",
         "swr": "^2.3.6"
     }
 }

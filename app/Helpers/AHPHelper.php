@@ -4,33 +4,43 @@ namespace App\Helpers;
 
 use App\Models\Criteria;
 use App\Models\CriteriaComparison;
+use Illuminate\Support\Facades\Log;
 
 class AHPHelper
 {
     // 1. Bangun matriks perbandingan berpasangan
     public static function getPairwiseMatrix()
     {
-        $criteria = Criteria::all();
+        $criteria = Criteria::orderBy('id')->get();
         $n = count($criteria);
 
+        if ($n < 2) {
+            return [[], []];
+        }
+
         $matrix = [];
+        
+        // Inisialisasi matriks dengan diagonal = 1
         foreach ($criteria as $i => $c1) {
             foreach ($criteria as $j => $c2) {
                 if ($i == $j) {
-                    $matrix[$c1->id][$c2->id] = 1;
+                    $matrix[$i][$j] = 1;
                 } else {
-                    $value = CriteriaComparison::where('criterion1_id', $c1->id)
-                        ->where('criterion2_id', $c2->id)
-                        ->value('value');
+                    // Cari perbandingan yang ada
+                    $comparison = CriteriaComparison::where('criteria1_id', $c1->id)
+                        ->where('criteria2_id', $c2->id)
+                        ->first();
 
-                    if (!$value) {
-                        $reverse = CriteriaComparison::where('criterion1_id', $c2->id)
-                            ->where('criterion2_id', $c1->id)
-                            ->value('value');
-                        $value = $reverse ? (1 / $reverse) : 1;
+                    if ($comparison) {
+                        $matrix[$i][$j] = $comparison->value;
+                    } else {
+                        // Cari kebalikannya
+                        $reverse = CriteriaComparison::where('criteria1_id', $c2->id)
+                            ->where('criteria2_id', $c1->id)
+                            ->first();
+                        
+                        $matrix[$i][$j] = $reverse ? (1 / $reverse->value) : 1;
                     }
-
-                    $matrix[$c1->id][$c2->id] = $value;
                 }
             }
         }
@@ -41,38 +51,52 @@ class AHPHelper
     // 2. Normalisasi matriks
     public static function normalizePairwiseMatrix($matrix)
     {
+        $n = count($matrix);
+        if ($n == 0) return [];
+        
         $normalized = [];
-        $colSums = [];
+        $colSums = array_fill(0, $n, 0);
 
-        // hitung jumlah kolom
-        foreach ($matrix as $i => $row) {
-            foreach ($row as $j => $val) {
-                $colSums[$j] = ($colSums[$j] ?? 0) + $val;
+        // Hitung jumlah setiap kolom
+        for ($j = 0; $j < $n; $j++) {
+            for ($i = 0; $i < $n; $i++) {
+                $colSums[$j] += $matrix[$i][$j];
             }
         }
 
-        // normalisasi
-        foreach ($matrix as $i => $row) {
-            foreach ($row as $j => $val) {
-                $normalized[$i][$j] = $val / $colSums[$j];
+        // Normalisasi setiap elemen
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = 0; $j < $n; $j++) {
+                $normalized[$i][$j] = $colSums[$j] > 0 ? $matrix[$i][$j] / $colSums[$j] : 0;
             }
         }
 
         return $normalized;
     }
 
-    // 3. Hitung bobot (eigen vector aprox)
+    // 3. Hitung bobot (priority vector)
     public static function calculatePriorityVector($normalized)
     {
+        $n = count($normalized);
+        if ($n == 0) return [];
+        
         $weights = [];
-        foreach ($normalized as $i => $row) {
-            $weights[$i] = array_sum($row) / count($row);
+        
+        // Rata-rata setiap baris
+        for ($i = 0; $i < $n; $i++) {
+            $sum = 0;
+            for ($j = 0; $j < $n; $j++) {
+                $sum += $normalized[$i][$j];
+            }
+            $weights[$i] = $sum / $n;
         }
 
-        // normalisasi bobot agar total = 1
+        // Normalisasi bobot agar total = 1
         $total = array_sum($weights);
-        foreach ($weights as $i => $w) {
-            $weights[$i] = $w / $total;
+        if ($total > 0) {
+            for ($i = 0; $i < $n; $i++) {
+                $weights[$i] = $weights[$i] / $total;
+            }
         }
 
         return $weights;
@@ -82,20 +106,33 @@ class AHPHelper
     public static function checkConsistency($matrix, $weights)
     {
         $n = count($matrix);
+        
+        if ($n < 2) {
+            return [
+                'lambdaMax' => $n,
+                'CI' => 0,
+                'CR' => 0,
+                'isConsistent' => true,
+            ];
+        }
 
-        // hitung λmax
+        // Hitung λmax
         $lambdaMax = 0;
-        foreach ($matrix as $i => $row) {
+        for ($i = 0; $i < $n; $i++) {
             $sumRow = 0;
-            foreach ($row as $j => $val) {
-                $sumRow += $val * $weights[$j];
+            for ($j = 0; $j < $n; $j++) {
+                $sumRow += $matrix[$i][$j] * $weights[$j];
             }
-            $lambdaMax += $sumRow / $weights[$i];
+            if ($weights[$i] > 0) {
+                $lambdaMax += $sumRow / $weights[$i];
+            }
         }
         $lambdaMax = $lambdaMax / $n;
 
+        // Hitung CI
         $CI = ($lambdaMax - $n) / ($n - 1);
 
+        // Random Index
         $RI = [
             1 => 0.00,
             2 => 0.00,
@@ -107,32 +144,186 @@ class AHPHelper
             8 => 1.41,
             9 => 1.45,
             10 => 1.49,
-        ][$n] ?? 1.49;
+        ];
 
-        $CR = $CI / $RI;
+        $riValue = $RI[$n] ?? 1.49;
+        $CR = $riValue > 0 ? $CI / $riValue : 0;
+
+       return [
+    'lambdaMax' => $lambdaMax,
+    'ci' => $CI,
+    'cr' => $CR,
+    'ri' => $riValue,
+    'isConsistent' => $CR <= 0.1,
+];
+
+    }
+
+    // 5. Hitung jumlah setiap baris matriks
+    public static function calculateRowSums($matrix)
+    {
+        $rowSums = [];
+        $n = count($matrix);
+        
+        for ($i = 0; $i < $n; $i++) {
+            $sum = 0;
+            for ($j = 0; $j < $n; $j++) {
+                $sum += $matrix[$i][$j];
+            }
+            $rowSums[$i] = $sum;
+        }
+        
+        return $rowSums;
+    }
+
+    // 6. Update bobot kriteria di database
+    public static function updateCriteriaWeights($weights, $criteria)
+    {
+        foreach ($criteria as $index => $criterion) {
+            if (isset($weights[$index])) {
+                $criterion->update(['weight' => $weights[$index]]);
+            }
+        }
+    }
+
+    // 7. Jalankan semua step
+    public static function calculate()
+    {
+        try {
+            [$criteria, $matrix] = self::getPairwiseMatrix();
+            
+            if (empty($criteria) || count($criteria) < 2) {
+                return [
+                    'error' => 'Minimal 2 kriteria diperlukan untuk analisis AHP',
+                    'criteria' => $criteria,
+                    'matrix' => [],
+                    'normalized' => [],
+                    'weights' => [],
+                    'rowSums' => [],
+                    'consistency' => null,
+                ];
+            }
+
+            $normalized = self::normalizePairwiseMatrix($matrix);
+            $weights = self::calculatePriorityVector($normalized);
+            $rowSums = self::calculateRowSums($matrix);
+            $consistency = self::checkConsistency($matrix, $weights);
+
+            // Update bobot di database
+            self::updateCriteriaWeights($weights, $criteria);
+
+            return [
+                'criteria' => $criteria,
+                'matrix' => $matrix,
+                'normalized' => $normalized,
+                'weights' => $weights,
+                'rowSums' => $rowSums,
+                'consistency' => $consistency,
+                'error' => null,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'error' => 'Error dalam perhitungan AHP: ' . $e->getMessage(),
+                'criteria' => [],
+                'matrix' => [],
+                'normalized' => [],
+                'weights' => [],
+                'rowSums' => [],
+                'consistency' => null,
+            ];
+        }
+    }
+
+    // 8. Get hasil perhitungan dalam format yang siap untuk API
+    public static function getCalculationResults()
+    {
+        $result = self::calculate();
+        
+        if ($result['error']) {
+            return [
+                'success' => false,
+                'message' => $result['error'],
+                'data' => null
+            ];
+        }
 
         return [
-            'lambdaMax' => $lambdaMax,
-            'CI' => $CI,
-            'CR' => $CR,
-            'isConsistent' => $CR < 0.1,
+            'success' => true,
+            'data' => [
+                'criteria' => $result['criteria']->map(function($criterion, $index) use ($result) {
+                    return [
+                        'id' => $criterion->id,
+                        'code' => $criterion->code,
+                        'name' => $criterion->name,
+                        'type' => $criterion->type,
+                        'weight' => $result['weights'][$index] ?? 0,
+                        'weight_percentage' => ($result['weights'][$index] ?? 0) * 100,
+                    ];
+                }),
+                'matrix' => $result['matrix'],
+                'normalized_matrix' => $result['normalized'],
+                'weights' => $result['weights'],
+                'row_sums' => $result['rowSums'],
+                'consistency' => $result['consistency'],
+                'ranking' => self::getCriteriaRanking($result['criteria'], $result['weights'])
+            ]
         ];
     }
 
-    // 5. Jalankan semua step
-    public static function calculate()
+    // 9. Get ranking kriteria
+    public static function getCriteriaRanking($criteria, $weights)
     {
-        [$criteria, $matrix] = self::getPairwiseMatrix();
-        $normalized = self::normalizePairwiseMatrix($matrix);
-        $weights = self::calculatePriorityVector($normalized);
-        $consistency = self::checkConsistency($matrix, $weights);
+        $ranking = [];
+        
+        foreach ($criteria as $index => $criterion) {
+            $ranking[] = [
+                'id' => $criterion->id,
+                'code' => $criterion->code,
+                'name' => $criterion->name,
+                'type' => $criterion->type,
+                'weight' => $weights[$index] ?? 0,
+                'weight_percentage' => ($weights[$index] ?? 0) * 100,
+                'rank' => 0 // will be set after sorting
+            ];
+        }
 
+        // Sort by weight descending
+        usort($ranking, function($a, $b) {
+            return $b['weight'] <=> $a['weight'];
+        });
+
+        // Set rank
+        foreach ($ranking as $index => &$item) {
+            $item['rank'] = $index + 1;
+        }
+
+        return $ranking;
+    }
+
+    // 10. Validasi data untuk AHP
+    public static function validateAHPData()
+    {
+        $criteriaCount = Criteria::count();
+        $comparisonCount = CriteriaComparison::count();
+        
+        $requiredComparisons = $criteriaCount * ($criteriaCount - 1) / 2;
+
+        // Log::info('kriteria totoal', [
+        //       'criteria_count' => $criteriaCount,
+        //     'comparison_count' => $comparisonCount,
+        //     'required_comparisons' => $requiredComparisons,
+        //     'has_enough_criteria' => $criteriaCount >= 2,
+        //     'has_complete_comparisons' => $comparisonCount >= $requiredComparisons,
+        //     'is_ready_for_calculation' => $criteriaCount >= 2 && $comparisonCount >= $requiredComparisons
+        // ]);
+        
         return [
-            'criteria' => $criteria,
-            'matrix' => $matrix,
-            'normalized' => $normalized,
-            'weights' => $weights,
-            'consistency' => $consistency,
+            'criteria_count' => $criteriaCount,
+            'comparison_count' => $comparisonCount,
+            'required_comparisons' => $requiredComparisons,
+            'has_enough_criteria' => $criteriaCount >= 2,
+            'has_complete_comparisons' => $comparisonCount >= $requiredComparisons,
+            'is_ready_for_calculation' => $criteriaCount >= 2 && $comparisonCount >= $requiredComparisons
         ];
     }
 }

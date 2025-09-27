@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class CriteriaComparison extends Model
 {
     use HasFactory;
+    protected $table = 'criteria_comparisons';
 
     protected $fillable = ['criteria1_id', 'criteria2_id', 'value'];
 
