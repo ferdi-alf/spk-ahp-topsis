@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\Models\Criteria;
 use App\Models\CriteriaComparison;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AHPHelper
@@ -177,11 +178,16 @@ class AHPHelper
     }
 
     // 6. Update bobot kriteria di database
+   // Di AHPHelper.php, perbaiki method ini:
     public static function updateCriteriaWeights($weights, $criteria)
     {
+        // Gunakan raw query atau chunk untuk menghindari transaction conflict
         foreach ($criteria as $index => $criterion) {
             if (isset($weights[$index])) {
-                $criterion->update(['weight' => $weights[$index]]);
+                // Gunakan DB::table untuk menghindari model transaction
+                DB::table('criteria')
+                    ->where('id', $criterion->id)
+                    ->update(['weight' => $weights[$index]]);
             }
         }
     }

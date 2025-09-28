@@ -74,7 +74,6 @@ export default function TableHasil() {
 
     return (
         <div className="space-y-6">
-            {/* Status Konsistensi */}
             <Card variant="outlined">
                 <CardContent>
                     <div className="flex items-center justify-between">
@@ -106,7 +105,6 @@ export default function TableHasil() {
                 </CardContent>
             </Card>
 
-            {/* Matriks Perbandingan Berpasangan */}
             <Card variant="outlined">
                 <CardContent>
                     <Typography variant="h6" gutterBottom>
@@ -162,7 +160,6 @@ export default function TableHasil() {
                 </CardContent>
             </Card>
 
-            {/* Matriks Nilai Kriteria (Normalisasi) */}
             <Card variant="outlined">
                 <CardContent>
                     <Typography variant="h6" gutterBottom>
@@ -239,7 +236,6 @@ export default function TableHasil() {
                 </CardContent>
             </Card>
 
-            {/* Ranking Kriteria */}
             <Card variant="outlined">
                 <CardContent>
                     <Typography variant="h6" gutterBottom>
@@ -304,7 +300,6 @@ export default function TableHasil() {
                 </CardContent>
             </Card>
 
-            {/* Statistik Perhitungan */}
             <Grid container spacing={3}>
                 <Grid item xs={12} md={3}>
                     <Card variant="outlined">

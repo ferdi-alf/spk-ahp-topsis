@@ -6,6 +6,7 @@ use App\Models\Criteria;
 use App\Models\CriteriaComparison;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 
@@ -25,6 +26,11 @@ class KriteriaController extends Controller
 
     public function store(Request $request)
     {
+        Log::info("request", [
+            'code' => $request->code,
+            'name' => $request->name,
+            'type' => $request->type
+        ]);
         $request->validate([
             'code' => 'required|string|max:10|unique:criteria,code',
             'name' => 'required|string|max:255',

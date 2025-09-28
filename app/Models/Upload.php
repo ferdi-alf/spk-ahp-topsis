@@ -9,7 +9,7 @@ class Upload extends Model
     protected $table = 'uploads';
 
     protected $fillable = [
-        'file_name',
+        'filename',
     ];
 
     public function alternatives()

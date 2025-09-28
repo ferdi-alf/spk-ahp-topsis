@@ -11,7 +11,7 @@ class Criteria extends Model
 
     protected $table = 'criteria';
 
-    protected $fillable = ['name', 'code', 'weight'];
+    protected $fillable = ['name', 'code', 'weight', 'type'];
 
     public function comparisonsAsFirst()
     {

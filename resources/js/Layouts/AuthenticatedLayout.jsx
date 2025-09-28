@@ -249,8 +249,8 @@ export default function AuthenticatedLayout({ children }) {
                                     icon={<FilterList />}
                                 />
                                 <SidebarItems
-                                    href="/alternative"
-                                    active={route().current("alternative.get")}
+                                    href="/uploads"
+                                    active={route().current("uploads.index")}
                                     color="yellow"
                                     title="Alternative"
                                     icon={<PeopleTwoTone />}

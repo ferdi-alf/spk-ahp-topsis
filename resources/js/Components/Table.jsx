@@ -96,6 +96,7 @@ function Row(props) {
 
                                 return (
                                     <>
+                                        {buttons.view && buttons.view}
                                         {buttons.edit && buttons.edit}
                                         {buttons.delete && buttons.delete}
                                     </>

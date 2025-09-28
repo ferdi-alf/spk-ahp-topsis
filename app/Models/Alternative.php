@@ -9,10 +9,16 @@ class Alternative extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'upload_id']; // Tambahkan upload_id disini
 
     public function scores()
     {
         return $this->hasMany(AlternativeValue::class);
+    }
+
+    // Tambahkan relasi ke Upload
+    public function upload()
+    {
+        return $this->belongsTo(Upload::class);
     }
 }

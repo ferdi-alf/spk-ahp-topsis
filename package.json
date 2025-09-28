@@ -27,9 +27,20 @@
         "@emotion/styled": "^11.14.1",
         "@mui/icons-material": "^7.3.2",
         "@mui/material": "^7.3.2",
+        "@radix-ui/react-dialog": "^1.1.15",
+        "chart.js": "^4.5.0",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "file-saver": "^2.0.5",
+        "lucide-react": "^0.544.0",
+        "react-chartjs-2": "^5.3.0",
         "react-fox-toast": "^1.10.20",
         "react-hook-form": "^7.63.0",
         "sweetalert2": "^11.23.0",
-        "swr": "^2.3.6"
+        "swr": "^2.3.6",
+        "tailwind-merge": "^3.3.1",
+        "tailwindcss-animate": "^1.0.7",
+        "vaul": "^1.1.2",
+        "xlsx": "^0.18.5"
     }
 }

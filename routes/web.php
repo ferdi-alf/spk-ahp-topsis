@@ -3,6 +3,7 @@
 use App\Http\Controllers\CriteriaComparisonController;
 use App\Http\Controllers\KriteriaController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UploadController;
 use App\Http\Controllers\UserController;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -35,6 +36,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/', 'store')->name('store');
         Route::put('/{id}', 'update')->name('update');
         Route::delete('/{id}', 'destroy')->name('destroy');
+    });
+
+    Route::controller(UploadController::class)->prefix('uploads')->name('uploads.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::get('/{id}', 'show')->name('show');
+        Route::delete('/{id}', 'destroy')->name('destroy');
+        Route::get('/{id}/calculate', 'calculate')->name('calculate');
+        Route::get('/{id}/export', 'export')->name('export');
     });
 
 

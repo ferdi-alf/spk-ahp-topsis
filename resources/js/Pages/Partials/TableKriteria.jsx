@@ -3,12 +3,15 @@ import React, { useState } from "react";
 import { toast } from "react-fox-toast";
 import useSWR, { mutate } from "swr";
 import ReusableCollapsibleTable from "@/Components/Table";
-
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import DeleteButton from "@/Components/DeleteButton";
 import UpdateButton from "@/Components/UpdateButton";
 import Loading from "@/Components/Loading";
-import { Chip, Alert } from "@mui/material";
+import { Chip, Alert, Button } from "@mui/material";
 import FormKriteria from "@/Components/form/FormKriteria";
+import Kriteria from "../Kriteria";
+import TaskIcon from "@mui/icons-material/Task";
 
 export default function TableKriteria() {
     const [openModal, setOpenModal] = useState(false);
@@ -29,10 +32,11 @@ export default function TableKriteria() {
         return res.json();
     });
 
+    console.log("data", criteria);
+
     const headers = ["code", "name", "type", "weight"];
 
     const handleCreate = async (data) => {
-        console.log("dataaa", data);
         try {
             const res = await fetch("/kriteria", {
                 method: "POST",
@@ -86,7 +90,7 @@ export default function TableKriteria() {
 
             toast.success(json.message || "Kriteria berhasil diperbarui");
             mutate("/kriteria?json=true");
-            mutate("/ahp-validation"); // refresh validasi AHP
+            mutate("/ahp-validation");
             handleCloseModal();
         } catch (err) {
             console.error(err);
@@ -125,6 +129,51 @@ export default function TableKriteria() {
             />
         ),
     });
+
+    const handleDownloadTemplate = () => {
+        if (!criteria || criteria.length === 0) {
+            toast.error("Data kriteria kosong");
+            return;
+        }
+
+        const cols = criteria.length;
+        const firstRow = ["Alternatif", "Kriteria", ...Array(cols).fill("")];
+        const secondRow = ["", ...criteria.map((c) => c.code)];
+
+        const wsData = [firstRow, secondRow];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        ws["!merges"] = [
+            { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+            { s: { r: 0, c: 1 }, e: { r: 0, c: cols } },
+        ];
+
+        const setCellStyle = (cellRef) => {
+            if (!ws[cellRef]) ws[cellRef] = { t: "s", v: "" };
+            ws[cellRef].s = {
+                font: { bold: true },
+                alignment: { horizontal: "center", vertical: "center" },
+            };
+        };
+
+        setCellStyle("A1");
+        setCellStyle("B1");
+
+        for (let i = 0; i < cols; i++) {
+            const colLetter = XLSX.utils.encode_col(i + 1);
+            setCellStyle(colLetter + "2");
+        }
+
+        ws["!cols"] = [{ wch: 25 }, ...Array(cols).fill({ wch: 12 })];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template");
+        const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+        saveAs(
+            new Blob([wbout], { type: "application/octet-stream" }),
+            "template_kriteria.xlsx"
+        );
+    };
 
     const columnMapper = {
         code: (row) => (
@@ -166,16 +215,28 @@ export default function TableKriteria() {
 
     return (
         <div>
-            <FormKriteria
-                isOpen={openModal}
-                onOpen={() => setOpenModal(true)}
-                onClose={handleCloseModal}
-                initialData={
-                    modalMode === "edit" && editData ? editData : undefined
-                }
-                onSubmitCreate={handleCreate}
-                onSubmitUpdate={handleUpdate}
-            />
+            <div className="flex justify-between items-center">
+                <Button
+                    variant="contained"
+                    color="success"
+                    className="flex justify-center items-center gap-2"
+                    onClick={handleDownloadTemplate}
+                >
+                    <TaskIcon />
+                    Download Template
+                </Button>
+
+                <FormKriteria
+                    isOpen={openModal}
+                    onOpen={() => setOpenModal(true)}
+                    onClose={handleCloseModal}
+                    initialData={
+                        modalMode === "edit" && editData ? editData : undefined
+                    }
+                    onSubmitCreate={handleCreate}
+                    onSubmitUpdate={handleUpdate}
+                />
+            </div>
 
             <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex justify-between items-center mb-6">

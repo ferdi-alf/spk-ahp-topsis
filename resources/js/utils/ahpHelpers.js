@@ -169,19 +169,14 @@ export function generateComparisonPairs(criteria) {
 export function getScaleText(value) {
     const scaleTexts = {
         1: "Sama penting",
-        2: "Sedikit lebih penting",
-        3: "Lebih penting",
-        4: "Lebih penting+",
-        5: "Sangat penting",
-        6: "Sangat penting+",
+        3: "Sedikit lebih penting",
+        5: "Lebih penting",
         7: "Jauh lebih penting",
-        8: "Jauh lebih penting+",
         9: "Mutlak lebih penting",
     };
 
     return scaleTexts[value] || "Tidak diketahui";
 }
-
 /**
  * Format angka untuk tampilan
  */

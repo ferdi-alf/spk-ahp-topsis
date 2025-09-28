@@ -75,10 +75,11 @@ export default function TableSkala() {
                 if (existing) {
                     return {
                         ...pair,
-                        value:
+                        value: parseFloat(
                             existing.criteria1_id === pair.criteria1.id
                                 ? existing.value
-                                : 1 / existing.value,
+                                : 1 / existing.value
+                        ),
                         id: existing.id,
                     };
                 }
@@ -176,8 +177,8 @@ export default function TableSkala() {
 
             toast.success(json.message || "Perbandingan berhasil disimpan");
             mutate("/kriteria-comparison?json=true");
-            mutate("/ahp-results"); // refresh hasil AHP
-            mutate("/ahp-validation"); // refresh validasi
+            mutate("/ahp-results");
+            mutate("/ahp-validation");
         } catch (err) {
             console.error(err);
             toast.error(
@@ -209,8 +210,8 @@ export default function TableSkala() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="space-y-6 relative">
+            <div className="bg-white  rounded-lg shadow-sm p-6">
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h2 className="text-xl font-bold text-gray-900">
@@ -222,41 +223,68 @@ export default function TableSkala() {
                     </div>
                 </div>
 
-                {consistencyResult && (
-                    <Alert
-                        severity={
-                            consistencyResult.isConsistent
-                                ? "success"
-                                : "warning"
-                        }
-                        className="mb-4"
+                {consistencyResult && consistencyResult.cr != null && (
+                    <div
+                        className="sticky top-4 z-50 mb-4"
+                        style={{
+                            position: "sticky",
+                            top: "4rem",
+                            zIndex: 1000,
+                        }}
                     >
-                        <div className="flex items-center justify-between">
-                            <span>
-                                Consistency Ratio:{" "}
-                                {(Number(consistencyResult.cr) * 100).toFixed(
-                                    2
-                                )}
-                                %
-                                {consistencyResult.isConsistent
-                                    ? " - Konsisten ✓"
-                                    : " - Tidak Konsisten (harus ≤ 10%)"}
-                            </span>
-                            <Chip
-                                label={
+                        <Alert
+                            severity={
+                                consistencyResult.isConsistent
+                                    ? "success"
+                                    : "warning"
+                            }
+                            className="shadow-lg border-l-4"
+                            sx={{
+                                backgroundColor: consistencyResult.isConsistent
+                                    ? "#f0f9ff"
+                                    : "#fffbeb",
+                                borderLeft: `4px solid ${
                                     consistencyResult.isConsistent
-                                        ? "KONSISTEN"
-                                        : "TIDAK KONSISTEN"
-                                }
-                                color={
-                                    consistencyResult.isConsistent
-                                        ? "success"
-                                        : "error"
-                                }
-                                size="small"
-                            />
-                        </div>
-                    </Alert>
+                                        ? "#10b981"
+                                        : "#f59e0b"
+                                }`,
+                                "& .MuiAlert-message": {
+                                    width: "100%",
+                                },
+                            }}
+                        >
+                            <div className="flex items-center justify-between w-full">
+                                <span className="flex-1">
+                                    Consistency Ratio:{" "}
+                                    {(
+                                        Number(consistencyResult.cr) * 100
+                                    ).toFixed(2)}
+                                    %
+                                    {consistencyResult.isConsistent
+                                        ? " - Konsisten ✓"
+                                        : " - Tidak Konsisten (harus ≤ 10%)"}
+                                </span>
+                                <Chip
+                                    className="ml-3 flex-shrink-0"
+                                    label={
+                                        consistencyResult.isConsistent
+                                            ? "KONSISTEN"
+                                            : "TIDAK KONSISTEN"
+                                    }
+                                    color={
+                                        consistencyResult.isConsistent
+                                            ? "success"
+                                            : "error"
+                                    }
+                                    size="small"
+                                    sx={{
+                                        fontWeight: "bold",
+                                        fontSize: "0.75rem",
+                                    }}
+                                />
+                            </div>
+                        </Alert>
+                    </div>
                 )}
 
                 <div className="space-y-4">
@@ -280,17 +308,19 @@ export default function TableSkala() {
                                     </div>
 
                                     <div className="flex-1 flex items-center justify-center space-x-2">
-                                        {/* Scale buttons kiri (untuk criteria1) */}
                                         <ButtonGroup
                                             size="small"
                                             orientation="vertical"
                                         >
-                                            {[9, 7, 5, 3, 2].map((scale) => (
+                                            {[9, 7, 5, 3].map((scale) => (
                                                 <Button
                                                     key={`left-${scale}`}
                                                     variant={
-                                                        comparison.value ===
-                                                        1 / scale
+                                                        // Perbaiki kondisi ini:
+                                                        Math.abs(
+                                                            comparison.value -
+                                                                1 / scale
+                                                        ) < 0.001
                                                             ? "contained"
                                                             : "outlined"
                                                     }
@@ -310,11 +340,10 @@ export default function TableSkala() {
                                                 </Button>
                                             ))}
                                         </ButtonGroup>
-
-                                        {/* Equal button */}
                                         <Button
                                             variant={
-                                                comparison.value === 1
+                                                Math.abs(comparison.value - 1) <
+                                                0.001
                                                     ? "contained"
                                                     : "outlined"
                                             }
@@ -333,7 +362,9 @@ export default function TableSkala() {
                                             sx={{
                                                 minWidth: "50px",
                                                 backgroundColor:
-                                                    comparison.value === 1
+                                                    Math.abs(
+                                                        comparison.value - 1
+                                                    ) < 0.001
                                                         ? "#4caf50"
                                                         : undefined,
                                             }}
@@ -341,17 +372,19 @@ export default function TableSkala() {
                                             1
                                         </Button>
 
-                                        {/* Scale buttons kanan (untuk criteria2) */}
                                         <ButtonGroup
                                             size="small"
                                             orientation="vertical"
                                         >
-                                            {[2, 3, 5, 7, 9].map((scale) => (
+                                            {[3, 5, 7, 9].map((scale) => (
                                                 <Button
                                                     key={`right-${scale}`}
                                                     variant={
-                                                        comparison.value ===
-                                                        scale
+                                                        // Perbaiki kondisi ini:
+                                                        Math.abs(
+                                                            comparison.value -
+                                                                scale
+                                                        ) < 0.001
                                                             ? "contained"
                                                             : "outlined"
                                                     }
@@ -394,7 +427,11 @@ export default function TableSkala() {
                                         variant="body2"
                                         color="textSecondary"
                                     >
-                                        Nilai: {comparison.value.toFixed(3)} -{" "}
+                                        Nilai:{" "}
+                                        {Number(comparison.value || 0).toFixed(
+                                            3
+                                        )}{" "}
+                                        -{" "}
                                         {getScaleText(
                                             comparison.value > 1
                                                 ? Math.round(comparison.value)
@@ -450,13 +487,9 @@ export default function TableSkala() {
                     </Typography>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                         <div>1 = Sama penting</div>
-                        <div>2 = Sedikit lebih penting</div>
-                        <div>3 = Lebih penting</div>
-                        <div>4 = Lebih penting+</div>
-                        <div>5 = Sangat penting</div>
-                        <div>6 = Sangat penting+</div>
+                        <div>3 = Sedikit lebih penting</div>
+                        <div>5 = Lebih penting</div>
                         <div>7 = Jauh lebih penting</div>
-                        <div>8 = Jauh lebih penting+</div>
                         <div>9 = Mutlak lebih penting</div>
                     </div>
                 </CardContent>

@@ -28,7 +28,7 @@ export default function FormKriteria({
         defaultValues: {
             code: "",
             name: "",
-            type: "benefit", // default benefit
+            type: "benefit",
         },
     });
 
