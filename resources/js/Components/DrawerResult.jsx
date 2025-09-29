@@ -505,8 +505,7 @@ export default function DrawerResult({
                                                 align="center"
                                             >
                                                 <strong>
-                                                    {crit.code} (
-                                                    {formatNumber(crit.weight)})
+                                                    {crit.code} ({crit.weight})
                                                 </strong>
                                             </TableCell>
                                         ))}
@@ -683,7 +682,7 @@ export default function DrawerResult({
         <Drawer open={open} onOpenChange={onClose}>
             <DrawerContent className="w-full h-3/4 ">
                 <DrawerHeader>
-                    <DrawerTitle className="flex items-center justify-between">
+                    <DrawerTitle className="flex md:flex-row flex-col items-center justify-between">
                         <div>
                             <Typography variant="h5">
                                 Hasil Perhitungan: {uploadData?.file_name}
@@ -712,7 +711,7 @@ export default function DrawerResult({
                     </DrawerTitle>
                 </DrawerHeader>
 
-                <div className="px-6 overflow-auto">
+                <div className="sm:px-6 px-2 overflow-auto">
                     <Tabs
                         variant="fullWidth"
                         value={tabValue}
