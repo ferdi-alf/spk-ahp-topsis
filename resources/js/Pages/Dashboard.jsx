@@ -47,11 +47,11 @@ export default function Dashboard({
                 label: "Bobot Kriteria",
                 data: criteriaData.map((c) => c.weight),
                 backgroundColor: [
-                    "rgba(59, 130, 246, 0.8)",
-                    "rgba(16, 185, 129, 0.8)",
-                    "rgba(251, 146, 60, 0.8)",
-                    "rgba(139, 92, 246, 0.8)",
-                    "rgba(236, 72, 153, 0.8)",
+                    "rgba(59, 130, 246, 0.5)",
+                    "rgba(16, 185, 129, 0.5)",
+                    "rgba(251, 146, 60, 0.5)",
+                    "rgba(139, 92, 246, 0.5)",
+                    "rgba(236, 72, 153, 0.5)",
                 ],
                 borderColor: [
                     "rgb(59, 130, 246)",
@@ -72,11 +72,11 @@ export default function Dashboard({
                 label: "Jumlah Karyawan",
                 data: scoreDistribution.map((d) => d.count),
                 backgroundColor: [
-                    "rgba(16, 185, 129, 0.8)",
-                    "rgba(59, 130, 246, 0.8)",
-                    "rgba(251, 191, 36, 0.8)",
-                    "rgba(251, 146, 60, 0.8)",
-                    "rgba(239, 68, 68, 0.8)",
+                    "rgba(16, 185, 129, 0.5)",
+                    "rgba(59, 130, 246, 0.5)",
+                    "rgba(251, 191, 36, 0.5)",
+                    "rgba(251, 146, 60, 0.5)",
+                    "rgba(239, 68, 68, 0.5)",
                 ],
                 borderColor: [
                     "rgb(16, 185, 129)",
