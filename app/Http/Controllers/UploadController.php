@@ -191,11 +191,19 @@ class UploadController extends Controller
                     'message' => 'Error dalam perhitungan AHP: ' . $ahpResult['error']
                 ], 400);
             }
-
-            // Calculate TOPSIS with AHP weights
+            
+            
             $topsisResult = TopsisHelper::calculate($id);
 
-            return response()->json($topsisResult);
+            // Pastikan format response konsisten
+            if ($topsisResult['success']) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $topsisResult['data']
+                ]);
+            }
+
+            return response()->json($topsisResult, 400);
 
         } catch (\Exception $e) {
             Log::error('Upload calculate error: ' . $e->getMessage());
@@ -213,16 +221,17 @@ class UploadController extends Controller
             $upload = Upload::findOrFail($id);
             $exportData = TopsisHelper::getExportData($id);
 
+            Log::info('Export data count: ' . count($exportData));
+            Log::info('Export data sample: ', ['first_row' => $exportData[0] ?? 'empty']);
+
             if (empty($exportData)) {
                 throw new \Exception('Tidak ada data untuk diekspor. Pastikan perhitungan sudah dilakukan.');
             }
 
-            // Create Excel file
             $spreadsheet = new Spreadsheet();
             $worksheet = $spreadsheet->getActiveSheet();
             $worksheet->setTitle('Ranking Results');
 
-            // Headers with styling
             $headers = array_keys($exportData[0]);
             $col = 'A';
             foreach ($headers as $header) {
@@ -234,7 +243,7 @@ class UploadController extends Controller
                 $col++;
             }
 
-            // Data
+  
             $row = 2;
             foreach ($exportData as $data) {
                 $col = 'A';
@@ -245,18 +254,16 @@ class UploadController extends Controller
                 $row++;
             }
 
-            // Auto-size columns
+
             foreach (range('A', $worksheet->getHighestColumn()) as $col) {
                 $worksheet->getColumnDimension($col)->setAutoSize(true);
             }
 
-            // Generate filename
+        
             $fileName = 'ranking_result_' . $upload->id . '_' . date('Y-m-d_H-i-s') . '.xlsx';
             
-            // Create writer
             $writer = new Xlsx($spreadsheet);
             
-            // Return as download
             return response()->streamDownload(function() use ($writer) {
                 $writer->save('php://output');
             }, $fileName, [

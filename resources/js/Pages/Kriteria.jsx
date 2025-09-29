@@ -7,11 +7,13 @@ import { useTheme } from "@mui/material/styles";
 import AppBar from "@mui/material/AppBar";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
-import Typography from "@mui/material/Typography";
+import ListAltIcon from "@mui/icons-material/ListAlt";
 import Box from "@mui/material/Box";
 import TableKriteria from "./Partials/TableKriteria";
 import TableSkala from "./Partials/TableSkala";
 import TableHasil from "./Partials/TableHasil";
+import IncompleteCircleIcon from "@mui/icons-material/IncompleteCircle";
+import LinearScaleIcon from "@mui/icons-material/LinearScale";
 
 function TabPanel(props) {
     const { children, value, index, ...other } = props;
@@ -99,19 +101,19 @@ export default function Kriteria() {
                                 <Tab
                                     label="Data Kriteria"
                                     {...a11yProps(0)}
-                                    icon={<span className="text-lg">📋</span>}
+                                    icon={<ListAltIcon />}
                                     iconPosition="start"
                                 />
                                 <Tab
                                     label="Perbandingan Berpasangan"
                                     {...a11yProps(1)}
-                                    icon={<span className="text-lg">⚖️</span>}
+                                    icon={<LinearScaleIcon />}
                                     iconPosition="start"
                                 />
                                 <Tab
                                     label="Hasil Analisis"
                                     {...a11yProps(2)}
-                                    icon={<span className="text-lg">📊</span>}
+                                    icon={<IncompleteCircleIcon />}
                                     iconPosition="start"
                                 />
                             </Tabs>

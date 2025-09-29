@@ -177,8 +177,6 @@ class AHPHelper
         return $rowSums;
     }
 
-    // 6. Update bobot kriteria di database
-   // Di AHPHelper.php, perbaiki method ini:
     public static function updateCriteriaWeights($weights, $criteria)
     {
         // Gunakan raw query atau chunk untuk menghindari transaction conflict

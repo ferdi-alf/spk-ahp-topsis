@@ -9,7 +9,7 @@ class Alternative extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'upload_id']; // Tambahkan upload_id disini
+    protected $fillable = ['name', 'upload_id'];
 
     public function scores()
     {

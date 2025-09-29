@@ -325,7 +325,6 @@ export default function UploadIndex() {
         <AuthenticatedLayout>
             <Head title="Upload Data Ranking" />
             <div className="">
-                {/* Information Cards */}
                 <div className="grid grid-cols-1 mb-5 md:grid-cols-2 gap-6">
                     <Card>
                         <CardContent className="p-6">
@@ -435,13 +434,13 @@ export default function UploadIndex() {
                 />
 
                 <div className="bg-white mt-5 rounded-lg shadow-sm p-6">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex md:flex-row flex-col justify-between items-center mb-6">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                            <h1 className="md:text-2xl sm:text-xl text-base font-bold text-gray-900 flex items-center gap-2">
                                 <UploadIcon className="text-blue-600" />
                                 Upload Data Ranking Karyawan
                             </h1>
-                            <p className="text-gray-600 mt-1">
+                            <p className="text-gray-600 text-xs mt-1">
                                 Upload dan kelola file Excel untuk analisis
                                 ranking karyawan menggunakan AHP-TOPSIS
                             </p>

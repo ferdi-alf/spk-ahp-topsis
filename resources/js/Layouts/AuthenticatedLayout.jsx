@@ -122,14 +122,16 @@ export default function AuthenticatedLayout({ children }) {
                                 </span>
                             </Link>
                         </div>
-                        <div className="flex items-center">
+
+                        <div className="flex items-center ">
                             <div className="flex items-center ms-3 relative">
                                 <button
                                     onClick={toggleDropdown}
                                     type="button"
-                                    className="flex text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300 hover:ring-4 hover:ring-gray-200 transition-all duration-200"
+                                    className="flex px-3 text-sm rounded-full focus:ring-4 focus:ring-gray-300 hover:ring-4 hover:ring-gray-200 transition-all duration-200"
                                     aria-expanded={showingNavigationDropdown}
                                 >
+                                    Menu
                                     <span className="sr-only">
                                         Open user menu
                                     </span>
@@ -228,7 +230,7 @@ export default function AuthenticatedLayout({ children }) {
                             <SidebarItems
                                 href="/dashboard"
                                 active={route().current("dashboard")}
-                                color="blue"
+                                color="purple"
                                 title="Dashboard"
                                 icon={<Dashboard />}
                             />
@@ -237,21 +239,21 @@ export default function AuthenticatedLayout({ children }) {
                                 <SidebarItems
                                     href="/users"
                                     active={route().current("users.get")}
-                                    color="green"
+                                    color="purple"
                                     title="Users"
                                     icon={<Person />}
                                 />
                                 <SidebarItems
                                     href="/kriteria"
                                     active={route().current("kriteria.get")}
-                                    color="red"
+                                    color="purple"
                                     title="kriteria"
                                     icon={<FilterList />}
                                 />
                                 <SidebarItems
                                     href="/uploads"
                                     active={route().current("uploads.index")}
-                                    color="yellow"
+                                    color="purple"
                                     title="Alternative"
                                     icon={<PeopleTwoTone />}
                                 />

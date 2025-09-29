@@ -163,41 +163,52 @@ export default function DrawerResult({
             (a, b) => a.topsis_ahp_rank - b.topsis_ahp_rank
         );
 
+        console.log("res", calculationResults?.data?.results);
+
         return (
-            <div className="space-y-6">
-                <Grid container spacing={3}>
+            <div className="space-y-6 w-full">
+                <div className="grid md:grid-cols-4 grid-cols-2 gap-4">
                     <Grid item xs={12} sm={6} md={3}>
                         <Card>
                             <CardContent>
                                 <Typography color="textSecondary" gutterBottom>
                                     Total Karyawan
                                 </Typography>
-                                <Typography variant="h4">
+                                <Typography
+                                    variant="h4"
+                                    className="text-transparent bg-clip-text bg-gradient-to-br from-fuchsia-500 via-purple-400 to-blue-500"
+                                >
                                     {results.length}
                                 </Typography>
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid>
                         <Card>
                             <CardContent>
                                 <Typography color="textSecondary" gutterBottom>
                                     Kriteria
                                 </Typography>
-                                <Typography variant="h4">
+                                <Typography
+                                    variant="h4"
+                                    className="text-transparent bg-clip-text bg-gradient-to-br from-fuchsia-500 via-purple-400 to-blue-500"
+                                >
                                     {calculationResults.data.criteria?.length ||
                                         0}
                                 </Typography>
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid>
                         <Card>
                             <CardContent>
                                 <Typography color="textSecondary" gutterBottom>
                                     Skor Tertinggi
                                 </Typography>
-                                <Typography variant="h4">
+                                <Typography
+                                    variant="h4"
+                                    className="text-transparent bg-clip-text bg-gradient-to-br from-fuchsia-500 via-purple-400 to-blue-500"
+                                >
                                     {formatNumber(
                                         Math.max(
                                             ...results.map(
@@ -209,13 +220,16 @@ export default function DrawerResult({
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid>
                         <Card>
                             <CardContent>
                                 <Typography color="textSecondary" gutterBottom>
                                     Upload Date
                                 </Typography>
-                                <Typography variant="h6">
+                                <Typography
+                                    variant="h4"
+                                    className="text-transparent bg-clip-text bg-gradient-to-br from-fuchsia-500 via-purple-400 to-blue-500"
+                                >
                                     {uploadData?.created_at
                                         ? new Date(
                                               uploadData.created_at
@@ -225,12 +239,12 @@ export default function DrawerResult({
                             </CardContent>
                         </Card>
                     </Grid>
-                </Grid>
+                </div>
 
                 {chartData && (
-                    <Grid container spacing={3}>
-                        <Grid item xs={12} md={8}>
-                            <Card>
+                    <div className="grid md:grid-cols-2 grid-cols-1   justify-items-center gap-3">
+                        <div className="w-full">
+                            <Card className="">
                                 <CardContent>
                                     <Typography variant="h6" gutterBottom>
                                         Perbandingan Skor (Top 10)
@@ -256,14 +270,14 @@ export default function DrawerResult({
                                     </Box>
                                 </CardContent>
                             </Card>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
+                        </div>
+                        <div className="w-full h-full">
                             <Card>
                                 <CardContent>
                                     <Typography variant="h6" gutterBottom>
                                         Top 5 Karyawan
                                     </Typography>
-                                    <Box sx={{ height: 300 }}>
+                                    <Box sx={{ height: 400 }}>
                                         <Doughnut
                                             data={chartData.doughnut}
                                             options={{
@@ -279,8 +293,8 @@ export default function DrawerResult({
                                     </Box>
                                 </CardContent>
                             </Card>
-                        </Grid>
-                    </Grid>
+                        </div>
+                    </div>
                 )}
 
                 <Card>
@@ -335,17 +349,14 @@ export default function DrawerResult({
                                                     variant="body2"
                                                     fontWeight="medium"
                                                 >
-                                                    {result.alternative?.name ||
-                                                        `Alternative ${result.alternative_id}`}
+                                                    {result.alternative?.name}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell align="center">
-                                                {formatNumber(result.ahp_score)}
+                                                {result.ahp_score}
                                             </TableCell>
                                             <TableCell align="center">
-                                                {formatNumber(
-                                                    result.topsis_score
-                                                )}
+                                                {result.topsis_score}
                                             </TableCell>
                                             <TableCell align="center">
                                                 <Typography
@@ -353,9 +364,7 @@ export default function DrawerResult({
                                                     fontWeight="bold"
                                                     color="primary"
                                                 >
-                                                    {formatNumber(
-                                                        result.topsis_ahp_score
-                                                    )}
+                                                    {result.topsis_ahp_score}
                                                 </Typography>
                                             </TableCell>
                                         </TableRow>
@@ -528,8 +537,8 @@ export default function DrawerResult({
                 </Card>
 
                 {/* Ideal Solutions */}
-                <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
+                <div className="grid sm:grid-cols-2 grid-cols-1 gap-3 ">
+                    <div>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
@@ -567,8 +576,8 @@ export default function DrawerResult({
                                 </TableContainer>
                             </CardContent>
                         </Card>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
+                    </div>
+                    <div>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
@@ -606,8 +615,8 @@ export default function DrawerResult({
                                 </TableContainer>
                             </CardContent>
                         </Card>
-                    </Grid>
-                </Grid>
+                    </div>
+                </div>
 
                 {/* Distance and Final Scores */}
                 <Card>
@@ -640,14 +649,10 @@ export default function DrawerResult({
                                         <TableRow key={alt.id}>
                                             <TableCell>{alt.name}</TableCell>
                                             <TableCell align="center">
-                                                {formatNumber(
-                                                    distances[alt.id]?.positive
-                                                )}
+                                                {distances[alt.id]?.positive}
                                             </TableCell>
                                             <TableCell align="center">
-                                                {formatNumber(
-                                                    distances[alt.id]?.negative
-                                                )}
+                                                {distances[alt.id]?.negative}
                                             </TableCell>
                                             <TableCell align="center">
                                                 <Typography
@@ -655,12 +660,12 @@ export default function DrawerResult({
                                                     fontWeight="bold"
                                                     color="primary"
                                                 >
-                                                    {formatNumber(
+                                                    {
                                                         calculationResults.data
                                                             .topsis_scores[
                                                             alt.id
                                                         ]
-                                                    )}
+                                                    }
                                                 </Typography>
                                             </TableCell>
                                         </TableRow>
@@ -676,7 +681,7 @@ export default function DrawerResult({
 
     return (
         <Drawer open={open} onOpenChange={onClose}>
-            <DrawerContent className="w-full h-3/4">
+            <DrawerContent className="w-full h-3/4 ">
                 <DrawerHeader>
                     <DrawerTitle className="flex items-center justify-between">
                         <div>
@@ -707,7 +712,7 @@ export default function DrawerResult({
                     </DrawerTitle>
                 </DrawerHeader>
 
-                <div className="px-6">
+                <div className="px-6 overflow-auto">
                     <Tabs
                         variant="fullWidth"
                         value={tabValue}
@@ -725,14 +730,6 @@ export default function DrawerResult({
                         {renderCalculationTab()}
                     </TabPanel>
                 </div>
-
-                <DrawerFooter>
-                    <DrawerClose asChild>
-                        <Button variant="outlined" startIcon={<Close />}>
-                            Tutup
-                        </Button>
-                    </DrawerClose>
-                </DrawerFooter>
             </DrawerContent>
         </Drawer>
     );
