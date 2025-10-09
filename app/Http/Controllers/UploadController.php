@@ -194,6 +194,7 @@ class UploadController extends Controller
             
             
             $topsisResult = TopsisHelper::calculate($id);
+            
 
             // Pastikan format response konsisten
             if ($topsisResult['success']) {

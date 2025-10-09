@@ -130,51 +130,6 @@ export default function TableKriteria() {
         ),
     });
 
-    const handleDownloadTemplate = () => {
-        if (!criteria || criteria.length === 0) {
-            toast.error("Data kriteria kosong");
-            return;
-        }
-
-        const cols = criteria.length;
-        const firstRow = ["Alternatif", "Kriteria", ...Array(cols).fill("")];
-        const secondRow = ["", ...criteria.map((c) => c.code)];
-
-        const wsData = [firstRow, secondRow];
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-        ws["!merges"] = [
-            { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
-            { s: { r: 0, c: 1 }, e: { r: 0, c: cols } },
-        ];
-
-        const setCellStyle = (cellRef) => {
-            if (!ws[cellRef]) ws[cellRef] = { t: "s", v: "" };
-            ws[cellRef].s = {
-                font: { bold: true },
-                alignment: { horizontal: "center", vertical: "center" },
-            };
-        };
-
-        setCellStyle("A1");
-        setCellStyle("B1");
-
-        for (let i = 0; i < cols; i++) {
-            const colLetter = XLSX.utils.encode_col(i + 1);
-            setCellStyle(colLetter + "2");
-        }
-
-        ws["!cols"] = [{ wch: 25 }, ...Array(cols).fill({ wch: 12 })];
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Template");
-        const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" });
-        saveAs(
-            new Blob([wbout], { type: "application/octet-stream" }),
-            "template_kriteria.xlsx"
-        );
-    };
-
     const columnMapper = {
         code: (row) => (
             <span className="font-mono font-semibold text-blue-600">
@@ -215,17 +170,7 @@ export default function TableKriteria() {
 
     return (
         <div>
-            <div className="flex justify-between items-center">
-                <Button
-                    variant="contained"
-                    color="success"
-                    className="flex justify-center items-center gap-2"
-                    onClick={handleDownloadTemplate}
-                >
-                    <TaskIcon />
-                    Download Template
-                </Button>
-
+            <div className="flex justify-end items-center">
                 <FormKriteria
                     isOpen={openModal}
                     onOpen={() => setOpenModal(true)}

@@ -20,6 +20,14 @@ export default function AuthenticatedLayout({ children }) {
     const sidebarRef = useRef(null);
     console.log(user);
 
+    useEffect(() => {
+        const hasReloaded = sessionStorage.getItem("hasReloadedOnce");
+        if (!hasReloaded) {
+            sessionStorage.setItem("hasReloadedOnce", "true");
+            window.location.reload();
+        }
+    }, []);
+
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
     const [sidebar, setSidebar] = useState(false);

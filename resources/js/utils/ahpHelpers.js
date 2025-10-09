@@ -1,8 +1,5 @@
 // utils/ahpHelpers.js
 
-/**
- * Membuat matriks perbandingan berpasangan dari data kriteria dan perbandingan
- */
 export function createComparisonMatrix(criteria, comparisons) {
     const n = criteria.length;
     const matrix = Array(n)
@@ -29,7 +26,8 @@ export function createComparisonMatrix(criteria, comparisons) {
 }
 
 /**
- * Normalisasi matriks perbandingan
+ * Normalisasi matriks perbandingan (VERSI PRESISI)
+ * Returns: { normalizedMatrix, columnSums }
  */
 export function normalizeMatrix(matrix) {
     const n = matrix.length;
@@ -37,7 +35,7 @@ export function normalizeMatrix(matrix) {
         .fill()
         .map(() => Array(n).fill(0));
 
-    // Hitung jumlah setiap kolom
+    // Hitung jumlah setiap kolom (VERTIKAL)
     const columnSums = Array(n).fill(0);
     for (let j = 0; j < n; j++) {
         for (let i = 0; i < n; i++) {
@@ -48,19 +46,23 @@ export function normalizeMatrix(matrix) {
     // Normalisasi setiap elemen
     for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
-            normalizedMatrix[i][j] = matrix[i][j] / columnSums[j];
+            normalizedMatrix[i][j] =
+                columnSums[j] > 0 ? matrix[i][j] / columnSums[j] : 0;
         }
     }
 
-    return normalizedMatrix;
+    return {
+        normalizedMatrix,
+        columnSums,
+    };
 }
-
 /**
  * Hitung bobot kriteria (priority vector)
  */
 export function calculateWeights(normalizedMatrix) {
     const n = normalizedMatrix.length;
     const weights = Array(n).fill(0);
+    const rowSums = Array(n).fill(0);
 
     // Rata-rata setiap baris
     for (let i = 0; i < n; i++) {
@@ -68,30 +70,46 @@ export function calculateWeights(normalizedMatrix) {
         for (let j = 0; j < n; j++) {
             sum += normalizedMatrix[i][j];
         }
+        rowSums[i] = sum;
         weights[i] = sum / n;
     }
 
-    return weights;
+    return {
+        weights,
+        rowSums,
+    };
 }
 
-/**
- * Hitung lambda maksimum
- */
-export function calculateLambdaMax(matrix, weights) {
+export function calculateEigenvalues(matrix, weights) {
     const n = matrix.length;
-    let lambdaMax = 0;
+    const weightedSums = Array(n).fill(0);
+    const eigenvalues = Array(n).fill(0);
 
+    // Hitung weighted sum untuk setiap baris
     for (let i = 0; i < n; i++) {
         let sum = 0;
         for (let j = 0; j < n; j++) {
             sum += matrix[i][j] * weights[j];
         }
-        lambdaMax += sum / weights[i];
+        weightedSums[i] = sum;
+        // Eigenvalue = weighted sum / priority vector
+        eigenvalues[i] = weights[i] > 0 ? sum / weights[i] : 0;
     }
 
-    return lambdaMax / n;
+    return {
+        weightedSums,
+        eigenvalues,
+    };
 }
 
+/**
+ * Hitung lambda maksimum - VERSI PRESISI
+ */
+export function calculateLambdaMax(eigenvalues) {
+    const n = eigenvalues.length;
+    const sum = eigenvalues.reduce((acc, val) => acc + val, 0);
+    return sum / n;
+}
 /**
  * Hitung Consistency Index (CI)
  */
@@ -118,7 +136,8 @@ export function calculateCR(ci, n) {
     };
 
     if (n <= 2) return 0;
-    return ci / (RI[n] || 1.49);
+    const ri = RI[n] || 1.49;
+    return ci / ri;
 }
 
 /**
@@ -126,24 +145,54 @@ export function calculateCR(ci, n) {
  */
 export function checkConsistency(matrix) {
     const n = matrix.length;
-    const normalizedMatrix = normalizeMatrix(matrix);
-    const weights = calculateWeights(normalizedMatrix);
-    const lambdaMax = calculateLambdaMax(matrix, weights);
+
+    // Step 1: Normalisasi
+    const { normalizedMatrix, columnSums } = normalizeMatrix(matrix);
+
+    // Step 2: Hitung weights
+    const { weights, rowSums: normalizedRowSums } =
+        calculateWeights(normalizedMatrix);
+
+    // Step 3: Hitung eigenvalues
+    const { weightedSums, eigenvalues } = calculateEigenvalues(matrix, weights);
+
+    // Step 4: Hitung lambda max
+    const lambdaMax = calculateLambdaMax(eigenvalues);
+
+    // Step 5: Hitung CI dan CR
     const ci = calculateCI(lambdaMax, n);
     const cr = calculateCR(ci, n);
 
+    // Random Index
+    const RI = {
+        1: 0,
+        2: 0,
+        3: 0.58,
+        4: 0.9,
+        5: 1.12,
+        6: 1.24,
+        7: 1.32,
+        8: 1.41,
+        9: 1.45,
+        10: 1.49,
+    };
+
     return {
         weights,
+        normalizedMatrix,
+        columnSums,
+        normalizedRowSums,
+        weightedSums,
+        eigenvalues,
         lambdaMax,
         ci,
         cr,
+        ri: RI[n] || 1.49,
         isConsistent: cr <= 0.1,
         matrix,
-        normalizedMatrix,
         n,
     };
 }
-
 /**
  * Generate skala perbandingan untuk UI
  */
@@ -177,10 +226,11 @@ export function getScaleText(value) {
 
     return scaleTexts[value] || "Tidak diketahui";
 }
-/**
- * Format angka untuk tampilan
- */
+
 export function formatNumber(number, decimals = 4) {
+    if (number === null || number === undefined || isNaN(number)) {
+        return "0." + "0".repeat(decimals);
+    }
     return Number(number).toFixed(decimals);
 }
 
@@ -189,6 +239,22 @@ export function formatNumber(number, decimals = 4) {
  */
 export function calculateRowSums(matrix) {
     return matrix.map((row) => row.reduce((sum, val) => sum + val, 0));
+}
+
+export function calculateColumnSums(matrix) {
+    const n = matrix.length;
+    if (n === 0) return [];
+
+    const m = matrix[0].length;
+    const columnSums = Array(m).fill(0);
+
+    for (let j = 0; j < m; j++) {
+        for (let i = 0; i < n; i++) {
+            columnSums[j] += matrix[i][j];
+        }
+    }
+
+    return columnSums;
 }
 
 /**
@@ -212,5 +278,90 @@ export function validateCriteriaForAHP(criteria) {
     return {
         isValid: true,
         message: "Data kriteria valid untuk analisis AHP",
+    };
+}
+
+export function decimalToFraction(decimal) {
+    if (Math.abs(decimal - 1) < 0.0001) {
+        return "1";
+    }
+
+    if (decimal >= 1) {
+        const rounded = Math.round(decimal);
+        if (Math.abs(decimal - rounded) < 0.01) {
+            return String(rounded);
+        }
+        return decimal.toFixed(2);
+    }
+
+    const reciprocal = 1 / decimal;
+    const rounded = Math.round(reciprocal);
+
+    if (Math.abs(reciprocal - rounded) < 0.01) {
+        return `1/${rounded}`;
+    }
+    return `1/${reciprocal.toFixed(2)}`;
+}
+
+export function generateCalculationDetails(matrix, normalizedMatrix, weights) {
+    const n = matrix.length;
+    const details = {
+        rowSums: calculateRowSums(matrix),
+        columnSums: calculateColumnSums(matrix),
+        normalizedRowSums: calculateRowSums(normalizedMatrix),
+        normalizedColumnSums: calculateColumnSums(normalizedMatrix),
+    };
+
+    return details;
+}
+
+export function calculateAHPComplete(matrix) {
+    const n = matrix.length;
+
+    if (n < 2) {
+        return {
+            error: "Minimal 2 kriteria diperlukan",
+            isValid: false,
+        };
+    }
+
+    const { normalizedMatrix, columnSums } = normalizeMatrix(matrix);
+    const { weights, rowSums: normalizedRowSums } =
+        calculateWeights(normalizedMatrix);
+    const { weightedSums, eigenvalues } = calculateEigenvalues(matrix, weights);
+    const lambdaMax = calculateLambdaMax(eigenvalues);
+    const ci = calculateCI(lambdaMax, n);
+    const cr = calculateCR(ci, n);
+
+    const RI = {
+        1: 0,
+        2: 0,
+        3: 0.58,
+        4: 0.9,
+        5: 1.12,
+        6: 1.24,
+        7: 1.32,
+        8: 1.41,
+        9: 1.45,
+        10: 1.49,
+    };
+
+    return {
+        isValid: true,
+        matrix,
+        normalizedMatrix,
+        weights,
+        rowSums: calculateRowSums(matrix),
+        columnSums,
+        normalizedRowSums,
+        normalizedColumnSums: calculateColumnSums(normalizedMatrix),
+        weightedSums,
+        eigenvalues,
+        lambdaMax,
+        ci,
+        cr,
+        ri: RI[n] || 1.49,
+        isConsistent: cr <= 0.1,
+        n,
     };
 }

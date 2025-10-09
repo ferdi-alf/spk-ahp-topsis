@@ -53,11 +53,24 @@ export default function TableSkala() {
         data: existingComparisons,
         error: comparisonError,
         isLoading: comparisonLoading,
-    } = useSWR("/kriteria-comparison?json=true", async () => {
-        const res = await fetch("/kriteria-comparison?json=true");
-        if (!res.ok) return [];
-        return res.json();
-    });
+    } = useSWR(
+        "/kriteria-comparison?json=true",
+        async () => {
+            const res = await fetch("/kriteria-comparison?json=true", {
+                cache: "no-cache", // 🔥 Tambahkan ini
+                headers: {
+                    "Cache-Control": "no-cache",
+                    Pragma: "no-cache",
+                },
+            });
+            if (!res.ok) return [];
+            return res.json();
+        },
+        {
+            revalidateOnFocus: true, // 🔥 Force revalidate
+            dedupingInterval: 0, // 🔥 No deduping
+        }
+    );
 
     useEffect(() => {
         if (criteria && criteria.length >= 2) {
@@ -73,15 +86,67 @@ export default function TableSkala() {
                 );
 
                 if (existing) {
-                    return {
+                    let finalValue = parseFloat(existing.value);
+
+                    console.log("🔄 Processing comparison:", {
+                        pair: `${pair.criteria1.name} vs ${pair.criteria2.name}`,
+                        existing_value: existing.value,
+                        existing_c1: existing.criteria1_id,
+                        existing_c2: existing.criteria2_id,
+                        pair_c1: pair.criteria1.id,
+                        pair_c2: pair.criteria2.id,
+                        need_inverse:
+                            existing.criteria1_id !== pair.criteria1.id,
+                        before_inverse: finalValue,
+                    });
+
+                    if (existing.criteria1_id !== pair.criteria1.id) {
+                        const beforeInverse = finalValue;
+                        finalValue = 1 / finalValue;
+
+                        console.log("⚠️ INVERTING:", {
+                            before: beforeInverse,
+                            after: finalValue,
+                            after_rounded: Math.round(finalValue * 1000) / 1000,
+                        });
+
+                        // Normalisasi ke skala AHP terdekat
+                        const scales = [
+                            1 / 9,
+                            1 / 7,
+                            1 / 5,
+                            1 / 3,
+                            1,
+                            3,
+                            5,
+                            7,
+                            9,
+                        ];
+                        const normalized = scales.reduce((prev, curr) =>
+                            Math.abs(curr - finalValue) <
+                            Math.abs(prev - finalValue)
+                                ? curr
+                                : prev
+                        );
+
+                        console.log("✅ NORMALIZED:", {
+                            before_normalize: finalValue,
+                            after_normalize: normalized,
+                        });
+
+                        finalValue = normalized;
+                    }
+
+                    const result = {
                         ...pair,
-                        value: parseFloat(
-                            existing.criteria1_id === pair.criteria1.id
-                                ? existing.value
-                                : 1 / existing.value
-                        ),
+                        value: Math.round(finalValue * 1000) / 1000,
+                        favoredCriteria: existing.favored_criteria,
                         id: existing.id,
                     };
+
+                    console.log("✅ Final comparison state:", result);
+
+                    return result;
                 }
                 return pair;
             });
@@ -99,21 +164,38 @@ export default function TableSkala() {
         }
     }, [criteria, existingComparisons, ahpResults]);
 
+    useEffect(() => {
+        if (existingComparisons && existingComparisons.length > 0) {
+            console.log("🔍 RAW API Response:", existingComparisons);
+
+            existingComparisons.forEach((comp, idx) => {
+                console.log(`Comparison #${idx}:`, {
+                    id: comp.id,
+                    value: comp.value,
+                    type: typeof comp.value,
+                    criteria1_id: comp.criteria1_id,
+                    criteria2_id: comp.criteria2_id,
+
+                    ...comp,
+                });
+            });
+        }
+    }, [existingComparisons]);
+
     const handleScaleChange = (index, newValue, direction) => {
         const updatedComparisons = [...comparisons];
 
         if (direction === "right") {
-            updatedComparisons[index].value = newValue;
+            updatedComparisons[index].value = Number(newValue.toFixed(3));
             updatedComparisons[index].favoredCriteria =
                 updatedComparisons[index].criteria2.id;
         } else {
-            updatedComparisons[index].value = 1 / newValue;
+            updatedComparisons[index].value = Number((1 / newValue).toFixed(3));
             updatedComparisons[index].favoredCriteria =
                 updatedComparisons[index].criteria1.id;
         }
 
         setComparisons(updatedComparisons);
-
         checkConsistencyRealtime(updatedComparisons);
     };
 
@@ -208,6 +290,19 @@ export default function TableSkala() {
             </Alert>
         );
     }
+
+    const isScaleActive = (comparisonValue, targetScale, direction) => {
+        // Round dulu ke 3 desimal
+        const roundedValue = Math.round(comparisonValue * 1000) / 1000;
+
+        const calculatedValue =
+            direction === "left"
+                ? Math.round((1 / targetScale) * 1000) / 1000
+                : Math.round(targetScale * 1000) / 1000;
+
+        // Gunakan tolerance yang lebih besar
+        return Math.abs(roundedValue - calculatedValue) < 0.005;
+    };
 
     return (
         <div className="space-y-6 relative">
@@ -312,38 +407,56 @@ export default function TableSkala() {
                                             size="small"
                                             orientation="vertical"
                                         >
-                                            {[9, 7, 5, 3].map((scale) => (
-                                                <Button
-                                                    key={`left-${scale}`}
-                                                    variant={
-                                                        // Perbaiki kondisi ini:
-                                                        Math.abs(
-                                                            comparison.value -
-                                                                1 / scale
-                                                        ) < 0.001
-                                                            ? "contained"
-                                                            : "outlined"
-                                                    }
-                                                    onClick={() =>
-                                                        handleScaleChange(
-                                                            index,
-                                                            scale,
-                                                            "left"
-                                                        )
-                                                    }
-                                                    sx={{
-                                                        minWidth: "40px",
-                                                        fontSize: "0.75rem",
-                                                    }}
-                                                >
-                                                    {scale}
-                                                </Button>
-                                            ))}
+                                            {[9, 7, 5, 3].map((scale) => {
+                                                // 🔥 PERBAIKAN: Hitung target dan current value dengan konsisten
+                                                const targetValue =
+                                                    Math.round(
+                                                        (1 / scale) * 1000
+                                                    ) / 1000;
+                                                const currentValue =
+                                                    Math.round(
+                                                        comparison.value * 1000
+                                                    ) / 1000;
+                                                const isActive =
+                                                    Math.abs(
+                                                        currentValue -
+                                                            targetValue
+                                                    ) < 0.01; // Tolerance 0.01
+
+                                                return (
+                                                    <Button
+                                                        key={`left-${scale}`}
+                                                        variant={
+                                                            isActive
+                                                                ? "contained"
+                                                                : "outlined"
+                                                        }
+                                                        onClick={() =>
+                                                            handleScaleChange(
+                                                                index,
+                                                                scale,
+                                                                "left"
+                                                            )
+                                                        }
+                                                        sx={{
+                                                            minWidth: "40px",
+                                                            fontSize: "0.75rem",
+                                                        }}
+                                                    >
+                                                        {scale}
+                                                    </Button>
+                                                );
+                                            })}
                                         </ButtonGroup>
                                         <Button
                                             variant={
-                                                Math.abs(comparison.value - 1) <
-                                                0.001
+                                                Math.abs(
+                                                    Math.round(
+                                                        comparison.value * 1000
+                                                    ) /
+                                                        1000 -
+                                                        1
+                                                ) < 0.01 // 🔥 PERBAIKAN: Tolerance dari 0.005 ke 0.01
                                                     ? "contained"
                                                     : "outlined"
                                             }
@@ -363,8 +476,13 @@ export default function TableSkala() {
                                                 minWidth: "50px",
                                                 backgroundColor:
                                                     Math.abs(
-                                                        comparison.value - 1
-                                                    ) < 0.001
+                                                        Math.round(
+                                                            comparison.value *
+                                                                1000
+                                                        ) /
+                                                            1000 -
+                                                            1
+                                                    ) < 0.01 // 🔥 PERBAIKAN: Tolerance dari 0.005 ke 0.01
                                                         ? "#4caf50"
                                                         : undefined,
                                             }}
@@ -376,33 +494,69 @@ export default function TableSkala() {
                                             size="small"
                                             orientation="vertical"
                                         >
-                                            {[3, 5, 7, 9].map((scale) => (
-                                                <Button
-                                                    key={`right-${scale}`}
-                                                    variant={
-                                                        // Perbaiki kondisi ini:
-                                                        Math.abs(
-                                                            comparison.value -
-                                                                scale
-                                                        ) < 0.001
-                                                            ? "contained"
-                                                            : "outlined"
-                                                    }
-                                                    onClick={() =>
-                                                        handleScaleChange(
-                                                            index,
+                                            {[3, 5, 7, 9].map((scale) => {
+                                                const targetValue =
+                                                    Math.round(scale * 1000) /
+                                                    1000;
+                                                const currentValue =
+                                                    Math.round(
+                                                        comparison.value * 1000
+                                                    ) / 1000;
+                                                const isActive =
+                                                    Math.abs(
+                                                        currentValue -
+                                                            targetValue
+                                                    ) < 0.01;
+
+                                                // Tambahkan log untuk button yang seharusnya aktif
+                                                if (
+                                                    scale === 5 &&
+                                                    comparison.criteria1.id ===
+                                                        1
+                                                ) {
+                                                    // Sesuaikan dengan test case
+                                                    console.log(
+                                                        "🔘 Button 5 check:",
+                                                        {
                                                             scale,
-                                                            "right"
-                                                        )
-                                                    }
-                                                    sx={{
-                                                        minWidth: "40px",
-                                                        fontSize: "0.75rem",
-                                                    }}
-                                                >
-                                                    {scale}
-                                                </Button>
-                                            ))}
+                                                            targetValue,
+                                                            currentValue,
+                                                            difference:
+                                                                Math.abs(
+                                                                    currentValue -
+                                                                        targetValue
+                                                                ),
+                                                            isActive,
+                                                            comparison_value_raw:
+                                                                comparison.value,
+                                                        }
+                                                    );
+                                                }
+
+                                                return (
+                                                    <Button
+                                                        key={`right-${scale}`}
+                                                        variant={
+                                                            isActive
+                                                                ? "contained"
+                                                                : "outlined"
+                                                        }
+                                                        onClick={() =>
+                                                            handleScaleChange(
+                                                                index,
+                                                                scale,
+                                                                "right"
+                                                            )
+                                                        }
+                                                        sx={{
+                                                            minWidth: "40px",
+                                                            fontSize: "0.75rem",
+                                                        }}
+                                                    >
+                                                        {scale}
+                                                    </Button>
+                                                );
+                                            })}
                                         </ButtonGroup>
                                     </div>
 

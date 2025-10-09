@@ -119,32 +119,47 @@ class TopsisHelper
         return $scores;
     }
 
+    // ============================================
+    // PERBAIKAN UTAMA: HAPUS NORMALISASI AHP SCORE
+    // ============================================
     public static function saveResults($uploadId, $alternatives, $ahpWeights, $topsisScores)
     {
         DB::beginTransaction();
         try {
-            // Delete dengan lock untuk menghindari race condition
+            // Delete existing results
             DB::table('results')->where('upload_id', $uploadId)->delete();
             
-            // Calculate AHP scores (simple weighted sum)
+            // Calculate AHP scores (weighted sum with ORIGINAL values)
             $ahpScores = [];
             foreach ($alternatives as $alt) {
                 $score = 0;
-                $values = AlternativeValue::where('alternative_id', $alt->id)
-                    ->get();
+                $values = AlternativeValue::where('alternative_id', $alt->id)->get();
                 
                 foreach ($values as $altValue) {
+                    $criteria = Criteria::find($altValue->criteria_id);
                     $weight = $ahpWeights[$altValue->criteria_id] ?? 0;
-                    $score += $altValue->value * $weight;
+                    
+                    // Handle COST criteria (K5)
+                    if ($criteria && $criteria->type === 'cost') {
+                        // For cost: lower is better, so invert the value
+                        // Use max value to normalize inversely
+                        $maxCostValue = AlternativeValue::where('criteria_id', $altValue->criteria_id)
+                            ->max('value') ?: 1;
+                        $normalizedValue = $maxCostValue > 0 ? ($maxCostValue - $altValue->value) / $maxCostValue : 0;
+                        $score += $normalizedValue * $weight;
+                    } else {
+                        // For benefit: normalize to 0-1 scale
+                        $maxValue = AlternativeValue::where('criteria_id', $altValue->criteria_id)
+                            ->max('value') ?: 1;
+                        $normalizedValue = $maxValue > 0 ? $altValue->value / $maxValue : 0;
+                        $score += $normalizedValue * $weight;
+                    }
                 }
                 $ahpScores[$alt->id] = $score;
             }
 
-            // Normalize AHP scores
-            $maxAhp = max($ahpScores) ?: 1;
-            foreach ($ahpScores as $altId => $score) {
-                $ahpScores[$altId] = $score / $maxAhp;
-            }
+            // *** HAPUS NORMALISASI TAMBAHAN YANG SALAH ***
+            // TIDAK PERLU normalize lagi karena sudah menggunakan bobot AHP yang benar
 
             // Create ranking arrays
             $ahpRanked = collect($ahpScores)->sortDesc();
@@ -154,6 +169,8 @@ class TopsisHelper
             foreach ($alternatives as $alt) {
                 $ahpScore = $ahpScores[$alt->id];
                 $topsisScore = $topsisScores[$alt->id];
+                
+                // Combined score = rata-rata AHP dan TOPSIS
                 $combinedScore = ($ahpScore + $topsisScore) / 2;
 
                 $results[] = [
@@ -179,16 +196,16 @@ class TopsisHelper
                 $result['updated_at'] = now();
             }
 
-            // Insert menggunakan DB::table untuk bulk insert
+            // Bulk insert
             DB::table('results')->insert($results);
             
             DB::commit();
             
             return Result::where('upload_id', $uploadId)
-            ->with('alternative')
-            ->orderBy('topsis_ahp_rank')
-            ->get()
-            ->toArray();
+                ->with('alternative')
+                ->orderBy('topsis_ahp_rank')
+                ->get()
+                ->toArray();
             
         } catch (\Exception $e) {
             DB::rollBack();
@@ -200,13 +217,12 @@ class TopsisHelper
     public static function calculate($uploadId)
     {
         try {
-         
+            // Check existing results
             $existingResults = Result::where('upload_id', $uploadId)->count();
             
             if ($existingResults > 0) {
-               
                 $results = Result::where('upload_id', $uploadId)
-                    ->with('alternative')  // TAMBAHKAN INI
+                    ->with('alternative')
                     ->orderBy('topsis_ahp_rank')
                     ->get()
                     ->toArray();
@@ -217,7 +233,6 @@ class TopsisHelper
                 [$idealPos, $idealNeg] = self::idealSolutions($weighted, $criteria);
                 $distances = self::distances($weighted, $idealPos, $idealNeg, $criteria);
                 
-      
                 $topsisScores = [];
                 foreach ($results as $result) {
                     $topsisScores[$result['alternative_id']] = $result['topsis_score'];
@@ -240,7 +255,7 @@ class TopsisHelper
                 ];
             }
             
-       
+            // New calculation
             [$alternatives, $criteria, $matrix] = self::getDecisionMatrix($uploadId);
             
             if (empty($alternatives) || empty($criteria)) {
@@ -287,12 +302,10 @@ class TopsisHelper
         }
     }
 
-
     public static function getCalculationResults($uploadId)
     {
         return self::calculate($uploadId);
     }
-
     
     public static function getExportData($uploadId)
     {
@@ -315,23 +328,22 @@ class TopsisHelper
                 'Nama Karyawan' => $result->alternative->name,
             ];
 
-            // Ambil nilai ASLI dari alternative_values (nilai mentah dari upload)
+            // Original values
             $values = AlternativeValue::where('alternative_id', $result->alternative_id)
                 ->get()
                 ->keyBy('criteria_id');
 
-            // Tambahkan nilai mentah per kriteria
             foreach ($criteria as $crit) {
                 $value = $values->get($crit->id);
                 $row[$crit->name . ' (' . $crit->code . ')'] = $value ? $value->value : 0;
             }
 
-            // Tambahkan skor-skor
-            $row['AHP Score'] = round($result->ahp_score, 4);
+            // Scores
+            $row['AHP Score'] = round($result->ahp_score, 6);
             $row['AHP Rank'] = $result->ahp_rank;
-            $row['TOPSIS Score'] = round($result->topsis_score, 4);
+            $row['TOPSIS Score'] = round($result->topsis_score, 6);
             $row['TOPSIS Rank'] = $result->topsis_rank;
-            $row['Combined Score'] = round($result->topsis_ahp_score, 4);
+            $row['Combined Score'] = round($result->topsis_ahp_score, 6);
             $row['Final Rank'] = $result->topsis_ahp_rank;
 
             $exportData[] = $row;

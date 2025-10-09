@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     Drawer,
     DrawerClose,
@@ -8,6 +8,13 @@ import {
     DrawerHeader,
     DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import {
     Table,
     TableBody,
@@ -37,6 +44,7 @@ import {
     Legend,
     ArcElement,
 } from "chart.js";
+
 import { toast } from "react-fox-toast";
 
 ChartJS.register(
@@ -72,9 +80,14 @@ export default function DrawerResult({
 }) {
     const [tabValue, setTabValue] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [rankingFilter, setRankingFilter] = useState("topsis_ahp");
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
+    };
+
+    const handleRankingFilterChange = (event) => {
+        setRankingFilter(event.target.value);
     };
 
     const handleDownload = async () => {
@@ -90,10 +103,35 @@ export default function DrawerResult({
         }
     };
 
-    const getChartData = () => {
+    // ✅ Memoize sortedResults
+    const sortedResults = useMemo(() => {
+        if (!calculationResults?.data?.results) return [];
+
+        const results = [...calculationResults.data.results]; // Clone array
+
+        return results.sort((a, b) => {
+            if (rankingFilter === "ahp") {
+                return a.ahp_rank - b.ahp_rank;
+            } else if (rankingFilter === "topsis") {
+                return a.topsis_rank - b.topsis_rank;
+            }
+            return a.topsis_ahp_rank - b.topsis_ahp_rank;
+        });
+    }, [calculationResults?.data?.results, rankingFilter]);
+
+    // ✅ Memoize maxScore
+    const maxScore = useMemo(() => {
+        return sortedResults.length > 0
+            ? Math.max(...sortedResults.map((r) => r.topsis_ahp_score))
+            : 0;
+    }, [sortedResults]);
+
+    // ✅ PENTING: Memoize chartData untuk menghindari re-calculation infinite
+    const chartData = useMemo(() => {
         if (!calculationResults?.data?.results) return null;
 
-        const results = calculationResults.data.results
+        // Clone dan sort untuk chart (tidak mutate original)
+        const results = [...calculationResults.data.results]
             .sort((a, b) => a.topsis_ahp_rank - b.topsis_ahp_rank)
             .slice(0, 10); // Top 10
 
@@ -148,9 +186,7 @@ export default function DrawerResult({
                 ],
             },
         };
-    };
-
-    const chartData = getChartData();
+    }, [calculationResults?.data?.results]); // Hanya re-calculate kalau results berubah
 
     const formatNumber = (num) => {
         return typeof num === "number" ? num.toFixed(4) : "0.0000";
@@ -158,12 +194,6 @@ export default function DrawerResult({
 
     const renderRankingTab = () => {
         if (!calculationResults?.data?.results) return null;
-
-        const results = calculationResults.data.results.sort(
-            (a, b) => a.topsis_ahp_rank - b.topsis_ahp_rank
-        );
-
-        console.log("res", calculationResults?.data?.results);
 
         return (
             <div className="space-y-6 w-full">
@@ -178,7 +208,7 @@ export default function DrawerResult({
                                     variant="h4"
                                     className="text-transparent bg-clip-text bg-gradient-to-br from-fuchsia-500 via-purple-400 to-blue-500"
                                 >
-                                    {results.length}
+                                    {sortedResults.length}
                                 </Typography>
                             </CardContent>
                         </Card>
@@ -209,13 +239,7 @@ export default function DrawerResult({
                                     variant="h4"
                                     className="text-transparent bg-clip-text bg-gradient-to-br from-fuchsia-500 via-purple-400 to-blue-500"
                                 >
-                                    {formatNumber(
-                                        Math.max(
-                                            ...results.map(
-                                                (r) => r.topsis_ahp_score
-                                            )
-                                        )
-                                    )}
+                                    {formatNumber(maxScore)}
                                 </Typography>
                             </CardContent>
                         </Card>
@@ -242,9 +266,9 @@ export default function DrawerResult({
                 </div>
 
                 {chartData && (
-                    <div className="grid md:grid-cols-2 grid-cols-1   justify-items-center gap-3">
+                    <div className="grid md:grid-cols-2 grid-cols-1 justify-items-center gap-3">
                         <div className="w-full">
-                            <Card className="">
+                            <Card>
                                 <CardContent>
                                     <Typography variant="h6" gutterBottom>
                                         Perbandingan Skor (Top 10)
@@ -297,6 +321,27 @@ export default function DrawerResult({
                     </div>
                 )}
 
+                <div className="flex items-center gap-4 mb-4">
+                    <Typography variant="body1" fontWeight="medium">
+                        Urutkan berdasarkan:
+                    </Typography>
+                    <Select
+                        value={rankingFilter}
+                        onValueChange={setRankingFilter}
+                    >
+                        <SelectTrigger className="w-[250px]">
+                            <SelectValue placeholder="Pilih ranking" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="topsis_ahp">
+                                Combined Rank (AHP-TOPSIS)
+                            </SelectItem>
+                            <SelectItem value="ahp">AHP Rank</SelectItem>
+                            <SelectItem value="topsis">TOPSIS Rank</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
                 <Card>
                     <CardContent>
                         <Typography variant="h6" gutterBottom>
@@ -316,59 +361,141 @@ export default function DrawerResult({
                                             <strong>AHP Score</strong>
                                         </TableCell>
                                         <TableCell align="center">
+                                            <strong>AHP Rank</strong>
+                                        </TableCell>
+                                        <TableCell align="center">
                                             <strong>TOPSIS Score</strong>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <strong>TOPSIS Rank</strong>
                                         </TableCell>
                                         <TableCell align="center">
                                             <strong>Combined Score</strong>
                                         </TableCell>
+                                        <TableCell align="center">
+                                            <strong>Combined Rank</strong>
+                                        </TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {results.map((result) => (
-                                        <TableRow key={result.alternative_id}>
-                                            <TableCell>
-                                                <div
-                                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                                                        result.topsis_ahp_rank ===
-                                                        1
-                                                            ? "bg-yellow-500"
-                                                            : result.topsis_ahp_rank ===
-                                                              2
-                                                            ? "bg-gray-400"
-                                                            : result.topsis_ahp_rank ===
-                                                              3
-                                                            ? "bg-amber-600"
-                                                            : "bg-blue-500"
-                                                    }`}
-                                                >
-                                                    {result.topsis_ahp_rank}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Typography
-                                                    variant="body2"
-                                                    fontWeight="medium"
-                                                >
-                                                    {result.alternative?.name}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                {result.ahp_score}
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                {result.topsis_score}
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Typography
-                                                    variant="body2"
-                                                    fontWeight="bold"
-                                                    color="primary"
-                                                >
-                                                    {result.topsis_ahp_score}
-                                                </Typography>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {sortedResults.map((result) => {
+                                        let displayRank =
+                                            result.topsis_ahp_rank;
+                                        if (rankingFilter === "ahp") {
+                                            displayRank = result.ahp_rank;
+                                        } else if (rankingFilter === "topsis") {
+                                            displayRank = result.topsis_rank;
+                                        }
+
+                                        return (
+                                            <TableRow
+                                                key={result.alternative_id}
+                                            >
+                                                <TableCell>
+                                                    <div
+                                                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                                                            displayRank === 1
+                                                                ? "bg-yellow-500"
+                                                                : displayRank ===
+                                                                  2
+                                                                ? "bg-gray-400"
+                                                                : displayRank ===
+                                                                  3
+                                                                ? "bg-amber-600"
+                                                                : "bg-blue-500"
+                                                        }`}
+                                                    >
+                                                        {displayRank}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography
+                                                        variant="body2"
+                                                        fontWeight="medium"
+                                                    >
+                                                        {
+                                                            result.alternative
+                                                                ?.name
+                                                        }
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    {result.ahp_score}
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Typography
+                                                        variant="body2"
+                                                        color={
+                                                            rankingFilter ===
+                                                            "ahp"
+                                                                ? "primary"
+                                                                : "textSecondary"
+                                                        }
+                                                        fontWeight={
+                                                            rankingFilter ===
+                                                            "ahp"
+                                                                ? "bold"
+                                                                : "normal"
+                                                        }
+                                                    >
+                                                        {result.ahp_rank}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    {result.topsis_score}
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Typography
+                                                        variant="body2"
+                                                        color={
+                                                            rankingFilter ===
+                                                            "topsis"
+                                                                ? "primary"
+                                                                : "textSecondary"
+                                                        }
+                                                        fontWeight={
+                                                            rankingFilter ===
+                                                            "topsis"
+                                                                ? "bold"
+                                                                : "normal"
+                                                        }
+                                                    >
+                                                        {result.topsis_rank}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Typography
+                                                        variant="body2"
+                                                        fontWeight="bold"
+                                                        color="primary"
+                                                    >
+                                                        {
+                                                            result.topsis_ahp_score
+                                                        }
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Typography
+                                                        variant="body2"
+                                                        color={
+                                                            rankingFilter ===
+                                                            "topsis_ahp"
+                                                                ? "primary"
+                                                                : "textSecondary"
+                                                        }
+                                                        fontWeight={
+                                                            rankingFilter ===
+                                                            "topsis_ahp"
+                                                                ? "bold"
+                                                                : "normal"
+                                                        }
+                                                    >
+                                                        {result.topsis_ahp_rank}
+                                                    </Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </TableContainer>
@@ -679,7 +806,12 @@ export default function DrawerResult({
     };
 
     return (
-        <Drawer open={open} onOpenChange={onClose}>
+        <Drawer
+            open={open}
+            onOpenChange={onClose}
+            modal={false} // ✅ TAMBAHKAN INI
+            dismissible={true} // ✅ TAMBAHKAN INI
+        >
             <DrawerContent className="w-full h-3/4 ">
                 <DrawerHeader>
                     <DrawerTitle className="flex md:flex-row flex-col items-center justify-between">
