@@ -7,9 +7,6 @@ use App\Models\CriteriaComparison;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-
-
-
 class AHPHelper
 {
     public static function getPairwiseMatrix()

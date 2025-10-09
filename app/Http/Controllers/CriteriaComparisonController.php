@@ -6,7 +6,6 @@ use App\Models\CriteriaComparison;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-// CriteriaComparisonController.php
 class CriteriaComparisonController extends Controller
 {
     public function get(Request $request)
@@ -16,17 +15,16 @@ class CriteriaComparisonController extends Controller
             ->map(function ($comp) {
                 return [
                     'id' => $comp->id,
-                    'criteria1_id' => $comp->criteria1_id,
-                    'criteria2_id' => $comp->criteria2_id,
-                    'value' => round((float) $comp->value, 3),  // 🔥 Ensure 3 decimal
+                    'criteria1_id' => (int) $comp->criteria1_id,
+                    'criteria2_id' => (int) $comp->criteria2_id,
+                    'value' => (float) $comp->value,  // ✅ HAPUS round(), biar frontend yang atur
                     'criteria1' => $comp->criteria1,
                     'criteria2' => $comp->criteria2,
                 ];
             });
         
         return response()->json($comparisons);
-        }
-
+    }
    
     public function store(Request $request)
     {
@@ -53,7 +51,7 @@ class CriteriaComparisonController extends Controller
                 CriteriaComparison::create([
                     'criteria1_id' => $comparison['criteria1_id'],
                     'criteria2_id' => $comparison['criteria2_id'],
-                    'value' => $this->normalizeValue($value),  // 🔥 Gunakan normalisasi
+                    'value' => $this->normalizeValue($value),
                     'favored_criteria' => $favored  
                 ]);
             }
@@ -74,8 +72,18 @@ class CriteriaComparisonController extends Controller
 
     private function normalizeValue($value)
     {
-        // Skala AHP standar
-        $scales = [1/9, 1/7, 1/5, 1/3, 1, 3, 5, 7, 9];
+        // Skala AHP standar dengan presisi penuh
+        $scales = [
+            1/9,   // 0.1111...
+            1/7,   // 0.1428...
+            1/5,   // 0.2
+            1/3,   // 0.3333...
+            1, 
+            3, 
+            5, 
+            7, 
+            9
+        ];
         
         $closest = 1;
         $minDiff = abs($value - 1);
@@ -88,8 +96,10 @@ class CriteriaComparisonController extends Controller
             }
         }
         
-        return round($closest, 3);
+        // ✅ PERBAIKAN: Bulatkan ke 4 desimal, sesuai decimal(8,4)
+        return round($closest, 4);
     }
+
     private function updateCriteriaWeights($comparisons)
     {
         \App\Helpers\AHPHelper::calculate();

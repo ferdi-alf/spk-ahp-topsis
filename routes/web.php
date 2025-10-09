@@ -22,6 +22,28 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+    // routes/web.php
+Route::get('/debug-matrix', function() {
+    $helper = new \App\Helpers\AHPHelper();
+    [$criteria, $matrix] = $helper->getPairwiseMatrix();
+    
+    return response()->json([
+        'criteria' => $criteria->pluck('code'),
+        'matrix' => $matrix,
+        'row_sums' => array_map('array_sum', $matrix),
+        'raw_comparisons' => \App\Models\CriteriaComparison::with(['criteria1', 'criteria2'])
+            ->get()
+            ->map(function($c) {
+                return [
+                    'c1' => $c->criteria1->code,
+                    'c2' => $c->criteria2->code,
+                    'value' => $c->getAttributes()['value'], // Raw value
+                    'favored' => $c->favored_criteria
+                ];
+            })
+    ]);
+});
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
